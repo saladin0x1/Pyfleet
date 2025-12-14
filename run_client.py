@@ -18,6 +18,7 @@ from absl import app, flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string('server', 'localhost:9999', 'Server address')
 flags.DEFINE_string('name', None, 'Agent name')
+flags.DEFINE_string('token', None, 'Enrollment token')
 
 logging.basicConfig(
     level=logging.INFO,

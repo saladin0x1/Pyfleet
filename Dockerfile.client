@@ -16,5 +16,7 @@ ENV PYTHONPATH=/app
 # Server address - use host.docker.internal for Mac, 172.17.0.1 for Linux
 ENV SERVER_ADDRESS=host.docker.internal:9999
 ENV AGENT_NAME=agent
+ENV ENROLLMENT_TOKEN=
 
-CMD ["sh", "-c", "python3 run_client.py --server=$SERVER_ADDRESS --name=$AGENT_NAME"]
+CMD ["sh", "-c", "python3 run_client.py --server=$SERVER_ADDRESS --name=$AGENT_NAME ${ENROLLMENT_TOKEN:+--token=$ENROLLMENT_TOKEN}"]
+

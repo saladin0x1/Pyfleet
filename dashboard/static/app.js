@@ -25,9 +25,9 @@ const elements = {
 
 // Icons for activity types
 const activityIcons = {
-    enrollment: '⊕',
-    status_change: '↻',
-    message: '✉',
+    enrollment: '+',
+    status_change: '~',
+    message: '>',
 };
 
 // Initialize
@@ -36,105 +36,79 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAgents();
     fetchEvents();
     setupEventListeners();
-    
+
     // Refresh periodically as backup
     setInterval(fetchAgents, 10000);
 });
 
 // WebSocket connection
 function initWebSocket() {
-    try {
-        socket = io();
-        
-        socket.on('connect', () => {
-            console.log('WebSocket connected');
-            updateServerStatus(true);
-        });
-        
-        socket.on('disconnect', () => {
-            console.log('WebSocket disconnected');
-            updateServerStatus(false);
-        });
-        
-        socket.on('event', (event) => {
-            addActivityItem(event);
-        });
-        
-        socket.on('agents_update', (data) => {
-            agents = data.agents;
-            updateStats(data.stats);
-            renderAgentsTable();
-        });
-    } catch (e) {
-        console.error('WebSocket error:', e);
-    }
+    socket = io();
+
+    socket.on('connect', () => {
+        console.log('WebSocket connected');
+    });
+
+    socket.on('agents_update', (data) => {
+        agents = data.agents || [];
+        updateStats(data.stats);
+        renderAgentsTable();
+    });
+
+    socket.on('event', (event) => {
+        addActivityItem(event);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('WebSocket disconnected');
+    });
 }
 
-function updateServerStatus(connected) {
-    const dot = elements.serverStatus.querySelector('.status-dot');
-    const text = elements.serverStatus.querySelector('span:last-child');
-    
-    if (connected) {
-        dot.className = 'status-dot online';
-        text.textContent = 'Server Online';
-    } else {
-        dot.className = 'status-dot offline';
-        text.textContent = 'Disconnected';
-    }
-}
-
-// Fetch data
+// Fetch agents from API
 async function fetchAgents() {
     try {
-        const [agentsRes, statsRes] = await Promise.all([
-            fetch('/api/agents'),
-            fetch('/api/stats'),
-        ]);
-        
-        agents = await agentsRes.json();
-        const stats = await statsRes.json();
-        
-        updateStats(stats);
+        const res = await fetch('/api/agents');
+        agents = await res.json();
         renderAgentsTable();
+
+        // Also fetch stats
+        const statsRes = await fetch('/api/stats');
+        const stats = await statsRes.json();
+        updateStats(stats);
     } catch (e) {
-        console.error('Fetch error:', e);
+        console.error('Fetch agents error:', e);
     }
 }
 
+// Fetch events from API
 async function fetchEvents() {
     try {
         const res = await fetch('/api/events');
         const events = await res.json();
-        
-        // Clear and render events
-        elements.activityFeed.innerHTML = '';
-        events.reverse().forEach(event => addActivityItem(event, false));
-        
-        if (events.length === 0) {
-            elements.activityFeed.innerHTML = '<div class="activity-empty">Waiting for events...</div>';
-        }
+        events.forEach(event => addActivityItem(event, false));
     } catch (e) {
-        console.error('Events fetch error:', e);
+        console.error('Fetch events error:', e);
     }
 }
 
-// Update UI
+// Update stats display
 function updateStats(stats) {
+    if (!stats) return;
     elements.statTotal.textContent = stats.total || 0;
     elements.statOnline.textContent = stats.online || 0;
     elements.statDegraded.textContent = stats.degraded || 0;
     elements.statOffline.textContent = stats.offline || 0;
 }
 
+// Render agents table
 function renderAgentsTable() {
-    const searchTerm = elements.searchInput.value.toLowerCase();
-    
-    const filtered = agents.filter(agent => 
-        agent.hostname.toLowerCase().includes(searchTerm) ||
-        agent.client_id.toLowerCase().includes(searchTerm) ||
-        agent.os_type.toLowerCase().includes(searchTerm)
+    const search = elements.searchInput?.value.toLowerCase() || '';
+    const filtered = agents.filter(a =>
+        a.hostname?.toLowerCase().includes(search) ||
+        a.client_id?.toLowerCase().includes(search) ||
+        a.os_type?.toLowerCase().includes(search)
     );
-    
+
     if (filtered.length === 0) {
         elements.agentsTableBody.innerHTML = `
             <tr class="empty-row">
@@ -143,102 +117,86 @@ function renderAgentsTable() {
         `;
         return;
     }
-    
+
     elements.agentsTableBody.innerHTML = filtered.map(agent => `
-        <tr data-id="${agent.client_id}">
+        <tr data-id="${agent.client_id}" onclick="showAgentDetail('${agent.client_id}')">
             <td>
-                <span class="status-badge ${agent.status}">
-                    <span class="status-dot ${agent.status}"></span>
-                    ${agent.status}
-                </span>
+                <span class="status-dot ${agent.status}"></span>
+                ${agent.status}
             </td>
-            <td>${escapeHtml(agent.hostname) || '—'}</td>
-            <td>${escapeHtml(agent.os_type) || '—'}</td>
-            <td>${escapeHtml(agent.agent_version) || '—'}</td>
+            <td>${escapeHtml(agent.hostname)}</td>
+            <td>${escapeHtml(agent.os_type)} ${escapeHtml(agent.os_version)}</td>
+            <td>${escapeHtml(agent.agent_version)}</td>
             <td>${formatTime(agent.last_seen)}</td>
-            <td>${renderTags(agent.tags)}</td>
+            <td>${(agent.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</td>
         </tr>
     `).join('');
-    
-    // Add click listeners
-    elements.agentsTableBody.querySelectorAll('tr').forEach(row => {
-        row.addEventListener('click', () => showAgentDetails(row.dataset.id));
-    });
 }
 
-function renderTags(tags) {
-    if (!tags || tags.length === 0) return '—';
-    return tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('');
-}
+// Add activity item
+function addActivityItem(event, prepend = true) {
+    // Remove empty message if present
+    const emptyMsg = elements.activityFeed.querySelector('.activity-empty');
+    if (emptyMsg) emptyMsg.remove();
 
-function addActivityItem(event, animate = true) {
-    // Remove empty message
-    const empty = elements.activityFeed.querySelector('.activity-empty');
-    if (empty) empty.remove();
-    
+    const icon = activityIcons[event.type] || '*';
     const item = document.createElement('div');
-    item.className = 'activity-item';
-    if (!animate) item.style.animation = 'none';
-    
-    const icon = activityIcons[event.type] || '•';
-    
+    item.className = `activity-item ${event.type}`;
     item.innerHTML = `
-        <div class="activity-icon ${event.type}">${icon}</div>
+        <span class="activity-icon">${icon}</span>
         <div class="activity-content">
             <div class="activity-message">${escapeHtml(event.message)}</div>
             <div class="activity-time">${formatTime(event.timestamp)}</div>
         </div>
     `;
-    
-    elements.activityFeed.insertBefore(item, elements.activityFeed.firstChild);
-    
+
+    if (prepend) {
+        elements.activityFeed.prepend(item);
+    } else {
+        elements.activityFeed.appendChild(item);
+    }
+
     // Limit items
     while (elements.activityFeed.children.length > 50) {
         elements.activityFeed.lastChild.remove();
     }
 }
 
-function showAgentDetails(clientId) {
+// Show agent detail modal
+function showAgentDetail(clientId) {
     const agent = agents.find(a => a.client_id === clientId);
     if (!agent) return;
-    
-    elements.modalTitle.textContent = agent.hostname || 'Agent Details';
+
+    elements.modalTitle.textContent = agent.hostname;
     elements.modalBody.innerHTML = `
         <div class="detail-row">
             <span class="detail-label">Client ID</span>
-            <span class="detail-value">${escapeHtml(agent.client_id)}</span>
+            <span class="detail-value"><code>${escapeHtml(agent.client_id)}</code></span>
         </div>
         <div class="detail-row">
             <span class="detail-label">Status</span>
             <span class="detail-value">
-                <span class="status-badge ${agent.status}">
-                    <span class="status-dot ${agent.status}"></span>
-                    ${agent.status}
-                </span>
+                <span class="status-dot ${agent.status}"></span> ${agent.status}
             </span>
         </div>
         <div class="detail-row">
             <span class="detail-label">Hostname</span>
-            <span class="detail-value">${escapeHtml(agent.hostname) || '—'}</span>
-        </div>
-        <div class="detail-row">
-            <span class="detail-label">OS Type</span>
-            <span class="detail-value">${escapeHtml(agent.os_type) || '—'}</span>
-        </div>
-        <div class="detail-row">
-            <span class="detail-label">OS Version</span>
-            <span class="detail-value">${escapeHtml(agent.os_version) || '—'}</span>
-        </div>
-        <div class="detail-row">
-            <span class="detail-label">Agent Version</span>
-            <span class="detail-value">${escapeHtml(agent.agent_version) || '—'}</span>
+            <span class="detail-value">${escapeHtml(agent.hostname)}</span>
         </div>
         <div class="detail-row">
             <span class="detail-label">IP Address</span>
-            <span class="detail-value">${escapeHtml(agent.ip_address) || '—'}</span>
+            <span class="detail-value">${escapeHtml(agent.ip_address)}</span>
         </div>
         <div class="detail-row">
-            <span class="detail-label">Enrolled At</span>
+            <span class="detail-label">OS</span>
+            <span class="detail-value">${escapeHtml(agent.os_type)} ${escapeHtml(agent.os_version)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Agent Version</span>
+            <span class="detail-value">${escapeHtml(agent.agent_version)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Enrolled</span>
             <span class="detail-value">${formatTime(agent.enrolled_at)}</span>
         </div>
         <div class="detail-row">
@@ -250,27 +208,30 @@ function showAgentDetails(clientId) {
             <span class="detail-value">${agent.message_count || 0}</span>
         </div>
         <div class="detail-row">
-            <span class="detail-label">Tags</span>
-            <span class="detail-value">${renderTags(agent.tags)}</span>
+            <span class="detail-label">Errors</span>
+            <span class="detail-value">${agent.error_count || 0}</span>
         </div>
     `;
-    
+
     elements.agentModal.classList.add('active');
 }
 
-// Event listeners
+// Setup event listeners
 function setupEventListeners() {
-    elements.searchInput.addEventListener('input', renderAgentsTable);
-    
-    elements.clearActivity.addEventListener('click', () => {
-        elements.activityFeed.innerHTML = '<div class="activity-empty">Waiting for events...</div>';
+    // Search
+    elements.searchInput?.addEventListener('input', renderAgentsTable);
+
+    // Clear activity
+    elements.clearActivity?.addEventListener('click', () => {
+        elements.activityFeed.innerHTML = `<div class="activity-empty">Waiting for events...</div>`;
     });
-    
-    elements.modalClose.addEventListener('click', () => {
+
+    // Modal close
+    elements.modalClose?.addEventListener('click', () => {
         elements.agentModal.classList.remove('active');
     });
-    
-    elements.agentModal.addEventListener('click', (e) => {
+
+    elements.agentModal?.addEventListener('click', (e) => {
         if (e.target === elements.agentModal) {
             elements.agentModal.classList.remove('active');
         }
@@ -286,18 +247,150 @@ function escapeHtml(str) {
 }
 
 function formatTime(isoString) {
-    if (!isoString) return '—';
+    if (!isoString) return '-';
     try {
         const date = new Date(isoString);
         const now = new Date();
         const diff = (now - date) / 1000;
-        
+
         if (diff < 60) return 'Just now';
         if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
         if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-        
+
         return date.toLocaleString();
     } catch {
-        return '—';
+        return '-';
     }
 }
+
+// ========================
+// Token Management
+// ========================
+
+let tokens = [];
+
+async function fetchTokens() {
+    try {
+        const res = await fetch('/api/tokens');
+        tokens = await res.json();
+        renderTokensTable();
+    } catch (e) {
+        console.error('Fetch tokens error:', e);
+    }
+}
+
+function renderTokensTable() {
+    const tbody = document.getElementById('tokensTableBody');
+    if (!tbody) return;
+
+    if (tokens.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No tokens. Click "Generate Token" to create one.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = tokens.map(t => `
+        <tr>
+            <td><strong>${escapeHtml(t.name)}</strong></td>
+            <td><code>${escapeHtml(t.token_preview)}</code></td>
+            <td>${t.max_uses === -1 ? 'Unlimited' : `${t.use_count}/${t.max_uses}`}</td>
+            <td>${t.expires_at ? formatTime(t.expires_at) : 'Never'}</td>
+            <td><span class="status-badge ${t.active ? 'online' : 'offline'}">${t.active ? 'Active' : 'Revoked'}</span></td>
+            <td>${t.active ? `<button class="btn-sm" onclick="revokeToken('${t.id}')">Revoke</button>` : ''}</td>
+        </tr>
+    `).join('');
+}
+
+function showCreateTokenModal() {
+    elements.modalTitle.textContent = 'Generate Enrollment Token';
+    elements.modalBody.innerHTML = `
+        <form id="tokenForm">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" class="input full-width" id="tokenName" value="Enrollment Token" required>
+            </div>
+            <div class="form-group">
+                <label>Expires in (hours, blank = never)</label>
+                <input type="number" class="input full-width" id="tokenExpires" placeholder="Optional">
+            </div>
+            <div class="form-group">
+                <label>Max uses (-1 = unlimited)</label>
+                <input type="number" class="input full-width" id="tokenMaxUses" value="-1">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">Generate</button>
+            </div>
+        </form>
+    `;
+    elements.agentModal.classList.add('active');
+
+    document.getElementById('tokenForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('tokenName').value;
+        const expires = document.getElementById('tokenExpires').value;
+        const maxUses = parseInt(document.getElementById('tokenMaxUses').value) || -1;
+
+        const res = await fetch('/api/tokens', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, expires_hours: expires || null, max_uses: maxUses })
+        });
+        const token = await res.json();
+        showTokenCreated(token);
+        fetchTokens();
+    };
+}
+
+function showTokenCreated(token) {
+    // Auto-detect server URL
+    const serverUrl = window.location.hostname + ':9999';
+    const cmd = `python3 run_client.py --server=${serverUrl} --token=${token.token}`;
+
+    elements.modalTitle.textContent = 'Token Created';
+    elements.modalBody.innerHTML = `
+        <div style="text-align:center">
+            <p><strong>Token generated successfully</strong></p>
+            <p style="color:var(--muted-foreground);font-size:13px">Enrollment command (click to copy):</p>
+            <div class="code-block-container">
+                <pre class="code-block" style="cursor:pointer" onclick="copyCmd(this)">${escapeHtml(cmd)}</pre>
+            </div>
+            <p style="color:var(--status-degraded);font-size:12px;margin-top:16px">Save this token now - you won't see it again.</p>
+            <div style="margin-top:12px;padding:12px;background:var(--secondary);border-radius:4px;text-align:left">
+                <div><strong>Token:</strong> <code style="font-size:11px;word-break:break-all">${token.token}</code></div>
+            </div>
+        </div>
+    `;
+}
+
+function copyCmd(el) {
+    navigator.clipboard.writeText(el.textContent).then(() => {
+        const original = el.textContent;
+        el.textContent = 'Copied!';
+        el.style.color = 'var(--status-online)';
+        setTimeout(() => {
+            el.textContent = original;
+            el.style.color = '';
+        }, 1500);
+    });
+}
+
+async function revokeToken(id) {
+    if (!confirm('Revoke this token?')) return;
+    await fetch(`/api/tokens/${id}/revoke`, { method: 'POST' });
+    fetchTokens();
+}
+
+// Tab Navigation
+document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(`page-${tab.dataset.page}`).classList.add('active');
+
+        if (tab.dataset.page === 'tokens') fetchTokens();
+    });
+});
+
+// Create Token Button
+document.getElementById('createToken')?.addEventListener('click', showCreateTokenModal);
+

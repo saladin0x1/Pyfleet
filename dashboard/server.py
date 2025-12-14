@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional
 from flask import Flask, jsonify, send_from_directory, request
 from flask_socketio import SocketIO
 
+from .database import Database
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +33,7 @@ class DashboardServer:
         self.fleet_server = fleet_server
         self.host = host
         self.port = port
+        self.db = Database()
         
         # Event history for activity feed
         self._events: List[Dict[str, Any]] = []
@@ -90,6 +93,45 @@ class DashboardServer:
                 self.fleet_server.clients.add_tag(client_id, tag)
                 return jsonify({"success": True})
             return jsonify({"error": "No tag provided"}), 400
+        
+        # Token API
+        @self.app.route("/api/tokens")
+        def get_tokens():
+            tokens = self.db.get_tokens()
+            for t in tokens:
+                t['token_preview'] = t['token'][:8] + '...'
+                del t['token']
+            return jsonify(tokens)
+        
+        @self.app.route("/api/tokens", methods=["POST"])
+        def create_token():
+            data = request.get_json() or {}
+            token = self.db.create_token(
+                name=data.get("name", "Enrollment Token"),
+                expires_hours=data.get("expires_hours"),
+                max_uses=data.get("max_uses", -1)
+            )
+            return jsonify(token), 201
+        
+        @self.app.route("/api/tokens/<token_id>")
+        def get_token(token_id):
+            token = self.db.get_token(token_id)
+            if token:
+                return jsonify(token)
+            return jsonify({"error": "Not found"}), 404
+        
+        @self.app.route("/api/tokens/<token_id>/revoke", methods=["POST"])
+        def revoke_token(token_id):
+            return jsonify({"success": self.db.revoke_token(token_id)})
+        
+        @self.app.route("/api/tokens/validate", methods=["POST"])
+        def validate_token():
+            data = request.get_json() or {}
+            token = data.get("token")
+            result = self.db.validate_token(token)
+            if result:
+                return jsonify({"valid": True, "token_id": result['id']})
+            return jsonify({"valid": False}), 401
     
     def _setup_hooks(self):
         """Hook into FleetServer events."""
