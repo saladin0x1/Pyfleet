@@ -72,11 +72,21 @@ class FleetClient:
         return f"{hostname}-{mac}"[:32]
     
     def _system_info(self) -> Dict[str, Any]:
+        # Get container's own IP
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+        except:
+            ip = "unknown"
+        
         return {
             "hostname": socket.gethostname(),
             "os_type": platform.system(),
             "os_version": platform.version(),
             "agent_version": self.agent_version,
+            "ip_address": ip,
             "tags": self.tags,
         }
     

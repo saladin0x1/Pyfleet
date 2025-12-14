@@ -57,8 +57,10 @@ class _Servicer(grpcservice_pb2_grpc.ProcessorServicer):
     def _handle_enrollment(self, client_id: str, request, context):
         try:
             data = json.loads(request.data.value.decode()) if request.data.value else {}
+            # Prefer client-reported IP, fallback to peer IP
             peer = context.peer() or ""
-            ip = peer.split(":")[-2] if ":" in peer else ""
+            peer_ip = peer.split(":")[-2] if ":" in peer else ""
+            ip = data.get("ip_address") or peer_ip
             
             self._server.clients.register(
                 client_id=client_id,
