@@ -1,21 +1,66 @@
-# PyFleet Docker POC
-# Spawns multiple agents that connect to the fleet server
+# PyFleet Docker POC - Fleet of agents with distinct hostnames
 #
-# Usage:
-#   1. Start the dashboard on the host: python3 run_dashboard.py
-#   2. Launch agents: docker-compose up --build --scale agent=10
-#
-# For bare metal Linux, agents connect to 172.17.0.1:9999 (Docker bridge)
-# Override SERVER_ADDRESS if running server elsewhere
+# Usage (Mac):
+#   1. Start the dashboard: PYTHONPATH=.. python3 run_dashboard.py
+#   2. Launch agents: docker-compose up --build
 
 services:
-  agent:
+  node-alpha:
     build:
       context: .
       dockerfile: Dockerfile.client
+    hostname: node-alpha
     environment:
-      - SERVER_ADDRESS=${SERVER_ADDRESS:-172.17.0.1:9999}
-      - AGENT_NAME=${HOSTNAME:-agent}
-    restart: on-failure
-    deploy:
-      replicas: 5
+      - SERVER_ADDRESS=host.docker.internal:9999
+      - AGENT_NAME=alpha
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: on-failure:3
+
+  node-bravo:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    hostname: node-bravo
+    environment:
+      - SERVER_ADDRESS=host.docker.internal:9999
+      - AGENT_NAME=bravo
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: on-failure:3
+
+  node-charlie:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    hostname: node-charlie
+    environment:
+      - SERVER_ADDRESS=host.docker.internal:9999
+      - AGENT_NAME=charlie
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: on-failure:3
+
+  node-delta:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    hostname: node-delta
+    environment:
+      - SERVER_ADDRESS=host.docker.internal:9999
+      - AGENT_NAME=delta
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: on-failure:3
+
+  node-echo:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    hostname: node-echo
+    environment:
+      - SERVER_ADDRESS=host.docker.internal:9999
+      - AGENT_NAME=echo
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: on-failure:3
