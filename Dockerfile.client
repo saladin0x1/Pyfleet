@@ -1,0 +1,20 @@
+FROM python:3.11-alpine
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir grpcio absl-py fleetspeak
+
+# Copy pyfleet package
+COPY common/ /app/pyfleet/common/
+COPY client/ /app/pyfleet/client/
+COPY __init__.py /app/pyfleet/
+COPY run_client.py /app/
+
+ENV PYTHONPATH=/app
+
+# Server address - override with environment variable
+ENV SERVER_ADDRESS=172.17.0.1:9999
+ENV AGENT_NAME=agent
+
+CMD ["sh", "-c", "python3 run_client.py --server=$SERVER_ADDRESS --name=$AGENT_NAME"]

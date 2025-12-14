@@ -1,0 +1,21 @@
+# PyFleet Docker POC
+# Spawns multiple agents that connect to the fleet server
+#
+# Usage:
+#   1. Start the dashboard on the host: python3 run_dashboard.py
+#   2. Launch agents: docker-compose up --build --scale agent=10
+#
+# For bare metal Linux, agents connect to 172.17.0.1:9999 (Docker bridge)
+# Override SERVER_ADDRESS if running server elsewhere
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    environment:
+      - SERVER_ADDRESS=${SERVER_ADDRESS:-172.17.0.1:9999}
+      - AGENT_NAME=${HOSTNAME:-agent}
+    restart: on-failure
+    deploy:
+      replicas: 5
