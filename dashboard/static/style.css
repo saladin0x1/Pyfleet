@@ -1,0 +1,610 @@
+/* PyFleet Dashboard - shadcn/ui inspired dark theme */
+
+:root {
+    /* shadcn dark palette */
+    --background: hsl(240, 10%, 3.9%);
+    --foreground: hsl(0, 0%, 98%);
+    --card: hsl(240, 10%, 3.9%);
+    --card-foreground: hsl(0, 0%, 98%);
+    --popover: hsl(240, 10%, 3.9%);
+    --popover-foreground: hsl(0, 0%, 98%);
+    --primary: hsl(0, 0%, 98%);
+    --primary-foreground: hsl(240, 5.9%, 10%);
+    --secondary: hsl(240, 3.7%, 15.9%);
+    --secondary-foreground: hsl(0, 0%, 98%);
+    --muted: hsl(240, 3.7%, 15.9%);
+    --muted-foreground: hsl(240, 5%, 64.9%);
+    --accent: hsl(240, 3.7%, 15.9%);
+    --accent-foreground: hsl(0, 0%, 98%);
+    --destructive: hsl(0, 62.8%, 30.6%);
+    --destructive-foreground: hsl(0, 0%, 98%);
+    --border: hsl(240, 3.7%, 15.9%);
+    --input: hsl(240, 3.7%, 15.9%);
+    --ring: hsl(240, 4.9%, 83.9%);
+
+    /* Status colors - muted */
+    --status-online: hsl(142, 71%, 45%);
+    --status-degraded: hsl(38, 92%, 50%);
+    --status-offline: hsl(0, 84%, 60%);
+    --status-enrolling: hsl(217, 91%, 60%);
+
+    /* Spacing */
+    --radius: 0.5rem;
+    --radius-sm: 0.25rem;
+    --radius-lg: 0.75rem;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", sans-serif;
+    background: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Header - minimal */
+.header {
+    height: 56px;
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.logo-icon {
+    width: 32px;
+    height: 32px;
+    background: hsl(240, 3.7%, 15.9%);
+    border: 1px solid hsl(240, 3.7%, 20%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(0, 0%, 98%);
+}
+
+.logo-text {
+    color: var(--foreground);
+}
+
+.header-subtitle {
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.server-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--muted-foreground);
+    padding: 6px 12px;
+    background: var(--secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+/* Status Dots - subtle glow */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.online {
+    background: var(--status-online);
+    box-shadow: 0 0 8px hsla(142, 71%, 45%, 0.5);
+}
+
+.status-dot.degraded {
+    background: var(--status-degraded);
+    box-shadow: 0 0 8px hsla(38, 92%, 50%, 0.5);
+}
+
+.status-dot.offline {
+    background: var(--status-offline);
+    box-shadow: 0 0 8px hsla(0, 84%, 60%, 0.5);
+}
+
+.status-dot.enrolling {
+    background: var(--status-enrolling);
+    box-shadow: 0 0 8px hsla(217, 91%, 60%, 0.5);
+}
+
+/* Main Content */
+.main-content {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Stats Section - shadcn card style */
+.stats-section {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    transition: all 0.15s ease;
+}
+
+.stat-card:hover {
+    background: var(--secondary);
+}
+
+.stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+}
+
+.stat-card.online .stat-value {
+    color: var(--status-online);
+}
+
+.stat-card.degraded .stat-value {
+    color: var(--status-degraded);
+}
+
+.stat-card.offline .stat-value {
+    color: var(--status-offline);
+}
+
+/* Content Grid */
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+}
+
+/* Section Header */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.section-header h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--foreground);
+    letter-spacing: -0.01em;
+}
+
+/* Agents Section */
+.agents-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.search-input {
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    color: var(--foreground);
+    font-size: 13px;
+    width: 220px;
+    transition: all 0.15s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px hsla(240, 4.9%, 83.9%, 0.1);
+}
+
+.search-input::placeholder {
+    color: var(--muted-foreground);
+}
+
+/* Table - clean shadcn style */
+.table-container {
+    overflow-x: auto;
+}
+
+.agents-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.agents-table th,
+.agents-table td {
+    padding: 12px 16px;
+    text-align: left;
+}
+
+.agents-table th {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+}
+
+.agents-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.agents-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.agents-table tbody tr:hover {
+    background: var(--secondary);
+}
+
+.agents-table td {
+    font-size: 14px;
+    color: var(--foreground);
+}
+
+.empty-row td {
+    text-align: center;
+    color: var(--muted-foreground);
+    padding: 48px;
+    font-size: 13px;
+}
+
+/* Status Badge - pill style */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-badge.online {
+    background: hsla(142, 71%, 45%, 0.1);
+    color: var(--status-online);
+}
+
+.status-badge.degraded {
+    background: hsla(38, 92%, 50%, 0.1);
+    color: var(--status-degraded);
+}
+
+.status-badge.offline {
+    background: hsla(0, 84%, 60%, 0.1);
+    color: var(--status-offline);
+}
+
+.status-badge.enrolling {
+    background: hsla(217, 91%, 60%, 0.1);
+    color: var(--status-enrolling);
+}
+
+/* Tags */
+.tag {
+    display: inline-block;
+    background: var(--secondary);
+    color: var(--muted-foreground);
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-right: 4px;
+    border: 1px solid var(--border);
+}
+
+/* Activity Section */
+.activity-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    height: fit-content;
+    max-height: calc(100vh - 220px);
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-clear {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted-foreground);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-clear:hover {
+    background: var(--secondary);
+    color: var(--foreground);
+}
+
+.activity-feed {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.activity-empty {
+    color: var(--muted-foreground);
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 13px;
+}
+
+.activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: var(--secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.activity-icon.enrollment {
+    background: hsla(217, 91%, 60%, 0.15);
+    color: var(--status-enrolling);
+}
+
+.activity-icon.status_change {
+    background: hsla(38, 92%, 50%, 0.15);
+    color: var(--status-degraded);
+}
+
+.activity-icon.message {
+    background: hsla(271, 91%, 65%, 0.15);
+    color: hsl(271, 91%, 65%);
+}
+
+.activity-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-message {
+    font-size: 13px;
+    color: var(--foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.activity-time {
+    font-size: 11px;
+    color: var(--muted-foreground);
+    margin-top: 4px;
+}
+
+/* Modal - shadcn dialog */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: hsla(240, 10%, 3.9%, 0.8);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow: hidden;
+    animation: modalIn 0.15s ease;
+    box-shadow: 0 25px 50px -12px hsla(0, 0%, 0%, 0.5);
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    color: var(--muted-foreground);
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+}
+
+.modal-close:hover {
+    color: var(--foreground);
+    background: var(--secondary);
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--foreground);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: right;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .activity-section {
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-section {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .header-subtitle {
+        display: none;
+    }
+}
+
+/* Scrollbar - minimal */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+}
+
+/* Focus ring */
+*:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+}

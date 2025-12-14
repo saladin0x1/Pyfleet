@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyFleet Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Snake head -->
+                        <circle cx="6" cy="6" r="2.5" fill="currentColor" stroke="none" />
+                        <!-- Snake body - S curve -->
+                        <path d="M6 8.5 C6 12, 18 10, 18 14 C18 18, 6 16, 6 20" fill="none" />
+                        <!-- Eye -->
+                        <circle cx="5" cy="5.5" r="0.7" fill="hsl(240, 10%, 3.9%)" stroke="none" />
+                    </svg>
+                </span>
+                <span class="logo-text">PyFleet</span>
+            </div>
+            <span class="header-subtitle">Fleet Management</span>
+        </div>
+        <div class="header-right">
+            <div class="server-status" id="serverStatus">
+                <span class="status-dot online"></span>
+                <span>Server Online</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Stats Cards -->
+        <section class="stats-section">
+            <div class="stat-card total">
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-label">Total Agents</div>
+            </div>
+            <div class="stat-card online">
+                <div class="stat-value" id="statOnline">0</div>
+                <div class="stat-label">Online</div>
+            </div>
+            <div class="stat-card degraded">
+                <div class="stat-value" id="statDegraded">0</div>
+                <div class="stat-label">Degraded</div>
+            </div>
+            <div class="stat-card offline">
+                <div class="stat-value" id="statOffline">0</div>
+                <div class="stat-label">Offline</div>
+            </div>
+        </section>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Agents Table -->
+            <section class="agents-section">
+                <div class="section-header">
+                    <h2>Agents</h2>
+                    <div class="section-actions">
+                        <input type="text" id="searchInput" placeholder="Search agents..." class="search-input">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="agents-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Hostname</th>
+                                <th>OS</th>
+                                <th>Version</th>
+                                <th>Last Seen</th>
+                                <th>Tags</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agentsTableBody">
+                            <tr class="empty-row">
+                                <td colspan="6">No agents connected</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Activity Feed -->
+            <aside class="activity-section">
+                <div class="section-header">
+                    <h2>Activity</h2>
+                    <button class="btn-clear" id="clearActivity">Clear</button>
+                </div>
+                <div class="activity-feed" id="activityFeed">
+                    <div class="activity-empty">
+                        Waiting for events...
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Agent Detail Modal -->
+    <div class="modal-overlay" id="agentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Agent Details</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
