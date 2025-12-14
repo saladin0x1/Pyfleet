@@ -17,6 +17,7 @@ ENV PYTHONPATH=/app
 ENV SERVER_ADDRESS=host.docker.internal:9999
 ENV AGENT_NAME=agent
 ENV ENROLLMENT_TOKEN=
+ENV DASHBOARD_URL=http://host.docker.internal:5000
 
-CMD ["sh", "-c", "python3 run_client.py --server=$SERVER_ADDRESS --name=$AGENT_NAME ${ENROLLMENT_TOKEN:+--token=$ENROLLMENT_TOKEN}"]
+CMD ["sh", "-c", "python3 run_client.py --server=$SERVER_ADDRESS --name=$AGENT_NAME --dashboard=$DASHBOARD_URL ${ENROLLMENT_TOKEN:+--token=$ENROLLMENT_TOKEN}"]
 

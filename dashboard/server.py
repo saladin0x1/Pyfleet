@@ -35,9 +35,8 @@ class DashboardServer:
         self.port = port
         self.db = Database()
         
-        # Event history for activity feed
-        self._events: List[Dict[str, Any]] = []
-        self._max_events = 100
+        # Load persisted settings
+        self._load_settings()
         
         # Flask app
         static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -52,6 +51,15 @@ class DashboardServer:
         
         self._thread: Optional[threading.Thread] = None
         self._running = False
+    
+    def _load_settings(self):
+        """Load persisted settings from database."""
+        hb = self.db.get_setting("heartbeat_timeout")
+        if hb:
+            self.fleet_server.clients._heartbeat_timeout = float(hb)
+        off = self.db.get_setting("offline_timeout")
+        if off:
+            self.fleet_server.clients._offline_timeout = float(off)
     
     def _setup_routes(self):
         """Setup REST API routes."""
@@ -80,10 +88,6 @@ class DashboardServer:
             stats["server_running"] = self.fleet_server.running
             stats["listen_address"] = self.fleet_server.listen_address
             return jsonify(stats)
-        
-        @self.app.route("/api/events")
-        def get_events():
-            return jsonify(self._events[-50:])
         
         @self.app.route("/api/agents/<client_id>/tags", methods=["POST"])
         def add_tag(client_id):
@@ -132,54 +136,172 @@ class DashboardServer:
             if result:
                 return jsonify({"valid": True, "token_id": result['id']})
             return jsonify({"valid": False}), 401
+        
+        # Broadcast API
+        @self.app.route("/api/broadcasts")
+        def get_broadcasts():
+            broadcasts = self.db.get_broadcasts(active_only=True)
+            return jsonify(broadcasts)
+        
+        @self.app.route("/api/broadcasts", methods=["POST"])
+        def create_broadcast():
+            data = request.get_json() or {}
+            message_type = data.get("message_type", "broadcast")
+            payload = data.get("data", "")
+            labels = data.get("required_labels", [])
+            
+            broadcast = self.db.create_broadcast(
+                message_type=message_type,
+                data=payload,
+                required_labels=labels,
+            )
+            
+            # Add to activity feed
+            self.db.add_event(
+                event_type="broadcast",
+                message=f"Broadcast created: {message_type}",
+            )
+            self._emit_event({"type": "broadcast", "message": f"Broadcast created: {message_type}"})
+            
+            return jsonify(broadcast), 201
+        
+        @self.app.route("/api/broadcasts/<broadcast_id>", methods=["DELETE"])
+        def delete_broadcast(broadcast_id):
+            success = self.db.delete_broadcast(broadcast_id)
+            return jsonify({"success": success})
+        
+        # Endpoint for clients to fetch pending broadcasts
+        @self.app.route("/api/broadcasts/pending/<client_id>")
+        def get_pending_broadcasts(client_id):
+            """Get broadcasts matching a client's tags."""
+            # Get client tags from database or registry
+            client = self.db.get_client(client_id)
+            if not client:
+                # Try in-memory registry
+                registry_client = self.fleet_server.clients.get(client_id)
+                if registry_client:
+                    client_tags = list(registry_client.tags)
+                else:
+                    client_tags = []
+            else:
+                client_tags = client.get('tags', [])
+            
+            # Get all broadcasts and filter by labels
+            all_broadcasts = self.db.get_broadcasts(active_only=True)
+            matching = []
+            for b in all_broadcasts:
+                required = b.get('required_labels', [])
+                if not required:
+                    # No label requirements = matches all
+                    matching.append(b)
+                else:
+                    # Check if client has any required label
+                    if any(label in client_tags for label in required):
+                        matching.append(b)
+            
+            return jsonify(matching)
+        
+        # Events API
+        @self.app.route("/api/events")
+        def get_events():
+            events = self.db.get_events(limit=50)
+            return jsonify(events)
+        
+        # Settings API
+        @self.app.route("/api/settings")
+        def get_settings():
+            """Get current server settings."""
+            return jsonify({
+                "heartbeat_timeout": self.fleet_server.clients._heartbeat_timeout,
+                "offline_timeout": self.fleet_server.clients._offline_timeout,
+                "service_name": self.fleet_server.service_name,
+                "listen_address": self.fleet_server.listen_address,
+            })
+        
+        @self.app.route("/api/settings", methods=["POST"])
+        def update_settings():
+            """Update server timeout settings."""
+            data = request.get_json() or {}
+            
+            if "heartbeat_timeout" in data:
+                val = float(data["heartbeat_timeout"])
+                if 5 <= val <= 300:
+                    self.fleet_server.clients._heartbeat_timeout = val
+                    self.db.set_setting("heartbeat_timeout", str(val))
+            
+            if "offline_timeout" in data:
+                val = float(data["offline_timeout"])
+                if 10 <= val <= 600:
+                    self.fleet_server.clients._offline_timeout = val
+                    self.db.set_setting("offline_timeout", str(val))
+            
+            # Log the change
+            self.db.add_event(
+                event_type="settings",
+                message=f"Settings updated: heartbeat={self.fleet_server.clients._heartbeat_timeout}s, offline={self.fleet_server.clients._offline_timeout}s",
+            )
+            
+            return jsonify({
+                "success": True,
+                "heartbeat_timeout": self.fleet_server.clients._heartbeat_timeout,
+                "offline_timeout": self.fleet_server.clients._offline_timeout,
+            })
     
     def _setup_hooks(self):
         """Hook into FleetServer events."""
         
         @self.fleet_server.on_enroll
         def on_enroll(client):
-            event = {
-                "type": "enrollment",
-                "client_id": client.client_id,
-                "hostname": client.hostname,
-                "timestamp": datetime.now().isoformat(),
-                "message": f"New agent enrolled: {client.hostname}",
-            }
-            self._add_event(event)
+            # Persist to database
+            self.db.add_event(
+                event_type="enrollment",
+                message=f"New agent enrolled: {client.hostname}",
+                client_id=client.client_id,
+                hostname=client.hostname,
+            )
+            # Also persist client to database
+            self.db.upsert_client(
+                client_id=client.client_id,
+                hostname=client.hostname,
+                os_type=client.os_type,
+                os_version=client.os_version,
+                agent_version=client.agent_version,
+                ip_address=client.ip_address,
+                tags=list(client.tags),
+                status="online",
+            )
+            self._emit_event({"type": "enrollment", "message": f"New agent enrolled: {client.hostname}"})
         
         @self.fleet_server.on_status_change
         def on_status_change(client, old_status, new_status):
-            event = {
-                "type": "status_change",
-                "client_id": client.client_id,
-                "hostname": client.hostname,
-                "old_status": old_status.value,
-                "new_status": new_status.value,
-                "timestamp": datetime.now().isoformat(),
-                "message": f"{client.hostname}: {old_status.value} → {new_status.value}",
-            }
-            self._add_event(event)
+            self.db.add_event(
+                event_type="status_change",
+                message=f"{client.hostname}: {old_status.value} → {new_status.value}",
+                client_id=client.client_id,
+                hostname=client.hostname,
+            )
+            self.db.update_client_status(client.client_id, new_status.value)
+            self._emit_event({"type": "status_change", "message": f"{client.hostname}: {old_status.value} → {new_status.value}"})
         
         @self.fleet_server.on_message
         def on_message(msg, ctx, client):
+            if client:
+                self.db.update_client_heartbeat(client.client_id)
+            
             if msg.message_type not in ("heartbeat", "enrollment"):
-                event = {
-                    "type": "message",
-                    "client_id": client.client_id if client else None,
-                    "hostname": client.hostname if client else "unknown",
-                    "message_type": msg.message_type,
-                    "timestamp": datetime.now().isoformat(),
-                    "message": f"Message from {client.hostname if client else '?'}: {msg.message_type}",
-                }
-                self._add_event(event)
+                if client:
+                    self.db.increment_client_messages(client.client_id)
+                self.db.add_event(
+                    event_type="message",
+                    message=f"Message from {client.hostname if client else '?'}: {msg.message_type}",
+                    client_id=client.client_id if client else None,
+                    hostname=client.hostname if client else "unknown",
+                )
+                self._emit_event({"type": "message", "message": f"Message from {client.hostname if client else '?'}: {msg.message_type}"})
     
-    def _add_event(self, event: Dict[str, Any]):
-        """Add event and broadcast via WebSocket."""
-        self._events.append(event)
-        if len(self._events) > self._max_events:
-            self._events = self._events[-self._max_events:]
-        
-        # Broadcast to all connected clients
+    def _emit_event(self, event: Dict[str, Any]):
+        """Emit event via WebSocket for real-time updates."""
+        event["timestamp"] = datetime.now().isoformat()
         try:
             self.socketio.emit("event", event)
             self.socketio.emit("agents_update", {

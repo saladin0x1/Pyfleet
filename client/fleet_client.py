@@ -40,7 +40,7 @@ class FleetClient:
         server_address: str = "localhost:9999",
         client_id: Optional[str] = None,
         agent_version: str = "1.0.0",
-        heartbeat_interval: float = 30.0,
+        heartbeat_interval: float = 15.0,  # 15s heartbeat
         tags: Optional[List[str]] = None,
     ):
         self.server_address = server_address

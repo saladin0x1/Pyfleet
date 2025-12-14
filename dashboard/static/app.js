@@ -28,6 +28,7 @@ const activityIcons = {
     enrollment: '+',
     status_change: '~',
     message: '>',
+    broadcast: '!',
 };
 
 // Initialize
@@ -379,7 +380,87 @@ async function revokeToken(id) {
     fetchTokens();
 }
 
-// Tab Navigation
+// Create Token Button
+document.getElementById('createToken')?.addEventListener('click', showCreateTokenModal);
+
+// ========================
+// Broadcast Management
+// ========================
+
+let broadcasts = [];
+
+async function fetchBroadcasts() {
+    try {
+        const res = await fetch('/api/broadcasts');
+        broadcasts = await res.json();
+        renderBroadcastsTable();
+    } catch (e) {
+        console.error('Fetch broadcasts error:', e);
+    }
+}
+
+function renderBroadcastsTable() {
+    const tbody = document.getElementById('broadcastsTableBody');
+    if (!tbody) return;
+
+    if (broadcasts.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No active broadcasts</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = broadcasts.map(b => `
+        <tr>
+            <td><code>${escapeHtml((b.id || '?').slice(0, 8))}...</code></td>
+            <td><strong>${escapeHtml(b.message_type || '?')}</strong></td>
+            <td>${(b.required_labels || []).map(l => `<span class="tag">${escapeHtml(l)}</span>`).join(' ') || '—'}</td>
+            <td>${b.expires_at ? formatTime(b.expires_at) : 'Never'}</td>
+            <td><button class="btn-sm" onclick="deleteBroadcast('${b.id}')">Delete</button></td>
+        </tr>
+    `).join('');
+}
+
+async function createBroadcast(messageType, labels, data) {
+    const res = await fetch('/api/broadcasts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            message_type: messageType,
+            required_labels: labels,
+            data: data
+        })
+    });
+    if (res.ok) {
+        fetchBroadcasts();
+        return true;
+    }
+    return false;
+}
+
+async function deleteBroadcast(id) {
+    if (!confirm('Delete this broadcast?')) return;
+    await fetch(`/api/broadcasts/${id}`, { method: 'DELETE' });
+    fetchBroadcasts();
+}
+
+// Broadcast form handler
+document.getElementById('broadcastForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const messageType = document.getElementById('broadcastType').value;
+    const labelsStr = document.getElementById('broadcastLabels').value;
+    const data = document.getElementById('broadcastData').value;
+
+    // Parse labels
+    const labels = labelsStr.split(',').map(s => s.trim()).filter(s => s);
+
+    if (await createBroadcast(messageType, labels, data)) {
+        document.getElementById('broadcastForm').reset();
+    }
+});
+
+// Refresh button
+document.getElementById('refreshBroadcasts')?.addEventListener('click', fetchBroadcasts);
+
+// Update tab handler to also fetch broadcasts
 document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -388,9 +469,58 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
         document.getElementById(`page-${tab.dataset.page}`).classList.add('active');
 
         if (tab.dataset.page === 'tokens') fetchTokens();
+        if (tab.dataset.page === 'broadcasts') fetchBroadcasts();
+        if (tab.dataset.page === 'settings') fetchSettings();
     });
 });
 
-// Create Token Button
-document.getElementById('createToken')?.addEventListener('click', showCreateTokenModal);
+// ==================
+// SETTINGS
+// ==================
 
+async function fetchSettings() {
+    try {
+        const res = await fetch('/api/settings');
+        const settings = await res.json();
+
+        document.getElementById('heartbeatTimeout').value = settings.heartbeat_timeout || 30;
+        document.getElementById('offlineTimeout').value = settings.offline_timeout || 90;
+
+        // Show server info
+        document.getElementById('serverInfo').innerHTML = `
+            <p><strong>Service:</strong> ${settings.service_name || 'pyfleet'}</p>
+            <p><strong>Listen Address:</strong> ${settings.listen_address || '?'}</p>
+            <p><strong>Heartbeat Timeout:</strong> ${settings.heartbeat_timeout}s</p>
+            <p><strong>Offline Timeout:</strong> ${settings.offline_timeout}s</p>
+        `;
+    } catch (e) {
+        console.error('Fetch settings error:', e);
+    }
+}
+
+document.getElementById('settingsForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const heartbeatTimeout = parseFloat(document.getElementById('heartbeatTimeout').value);
+    const offlineTimeout = parseFloat(document.getElementById('offlineTimeout').value);
+
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                heartbeat_timeout: heartbeatTimeout,
+                offline_timeout: offlineTimeout
+            })
+        });
+
+        if (res.ok) {
+            const saved = document.getElementById('settingsSaved');
+            saved.style.display = 'inline';
+            setTimeout(() => saved.style.display = 'none', 2000);
+            fetchSettings();  // Refresh displayed values
+        }
+    } catch (e) {
+        console.error('Save settings error:', e);
+    }
+});

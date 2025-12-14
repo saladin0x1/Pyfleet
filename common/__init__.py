@@ -18,6 +18,102 @@ class ClientStatus(Enum):
     ENROLLING = "enrolling"
 
 
+class Priority(Enum):
+    """Message priority levels (matches protobuf Message.Priority)."""
+    MEDIUM = 0
+    LOW = 1
+    HIGH = 2
+
+
+@dataclass
+class Address:
+    """
+    Identifies the source or destination of a message.
+    Matches: fleetspeak.common.Address
+    """
+    client_id: bytes = b""  # 8-byte client identifier (empty for server)
+    service_name: str = ""  # Service name (e.g., "pyfleet", "system")
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "client_id": self.client_id.hex() if self.client_id else "",
+            "service_name": self.service_name,
+        }
+    
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "Address":
+        client_id = bytes.fromhex(d.get("client_id", "")) if d.get("client_id") else b""
+        return cls(client_id=client_id, service_name=d.get("service_name", ""))
+
+
+@dataclass
+class ValidationInfo:
+    """
+    Tags for message validation.
+    Matches: fleetspeak.common.ValidationInfo
+    """
+    tags: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class MessageResult:
+    """
+    Result of message processing.
+    Matches: fleetspeak.common.MessageResult
+    """
+    processed_time: Optional[datetime] = None
+    failed: bool = False
+    failed_reason: str = ""
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "processed_time": self.processed_time.isoformat() if self.processed_time else None,
+            "failed": self.failed,
+            "failed_reason": self.failed_reason,
+        }
+
+
+@dataclass
+class AnnotationEntry:
+    """Single annotation entry."""
+    key: str = ""
+    value: str = ""
+
+
+@dataclass
+class Annotations:
+    """
+    Arbitrary key-value metadata.
+    Matches: fleetspeak.common.Annotations
+    """
+    entries: List["AnnotationEntry"] = field(default_factory=list)
+    
+    def to_dict(self) -> Dict[str, str]:
+        return {e.key: e.value for e in self.entries}
+    
+    def add(self, key: str, value: str) -> None:
+        self.entries.append(AnnotationEntry(key=key, value=value))
+    
+    def get(self, key: str, default: str = "") -> str:
+        for e in self.entries:
+            if e.key == key:
+                return e.value
+        return default
+
+
+@dataclass
+class Label:
+    """
+    Service labels for client classification.
+    Matches: fleetspeak.common.Label
+    """
+    service_name: str = ""  # Service that applied the label
+    label: str = ""         # Label value (e.g., "windows", "high-priority")
+    
+    def to_dict(self) -> Dict[str, str]:
+        return {"service_name": self.service_name, "label": self.label}
+
+
 @dataclass
 class ClientInfo:
     """Information about a connected client."""

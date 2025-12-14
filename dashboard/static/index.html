@@ -28,7 +28,9 @@
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
             <button class="nav-tab active" data-page="agents">Agents</button>
+            <button class="nav-tab" data-page="broadcasts">Broadcasts</button>
             <button class="nav-tab" data-page="tokens">Enrollment Tokens</button>
+            <button class="nav-tab" data-page="settings">Settings</button>
         </nav>
         <div class="header-right">
             <div class="server-status" id="serverStatus">
@@ -109,6 +111,65 @@
             </div>
         </div>
 
+        <!-- BROADCASTS PAGE -->
+        <div id="page-broadcasts" class="page">
+            <div class="page-header">
+                <h1>Broadcasts</h1>
+                <p class="page-desc">Send mass messages to clients by label.</p>
+            </div>
+
+            <section class="card">
+                <div class="section-header">
+                    <h2>Create Broadcast</h2>
+                </div>
+                <form id="broadcastForm" class="broadcast-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Message Type</label>
+                            <input type="text" class="input" id="broadcastType" placeholder="e.g., command, update"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label>Target Labels (comma-separated)</label>
+                            <input type="text" class="input" id="broadcastLabels"
+                                placeholder="e.g., windows, production">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Data (optional)</label>
+                        <textarea class="input" id="broadcastData" rows="3"
+                            placeholder="JSON payload or message content"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Send Broadcast</button>
+                </form>
+            </section>
+
+            <section class="card" style="margin-top:24px">
+                <div class="section-header">
+                    <h2>Active Broadcasts</h2>
+                    <button class="btn-clear" id="refreshBroadcasts">Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table class="agents-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Labels</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="broadcastsTableBody">
+                            <tr class="empty-row">
+                                <td colspan="5">No active broadcasts</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
         <!-- TOKENS PAGE -->
         <div id="page-tokens" class="page">
             <div class="page-header">
@@ -139,6 +200,52 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- SETTINGS PAGE -->
+        <div id="page-settings" class="page">
+            <div class="page-header">
+                <h1>Settings</h1>
+                <p class="page-desc">Configure server settings and timeout values.</p>
+            </div>
+
+            <section class="card">
+                <h2>Timeout Configuration</h2>
+                <p style="margin-bottom: 1rem; opacity: 0.7;">
+                    Configure how quickly agents are marked as degraded or offline.
+                </p>
+
+                <form id="settingsForm" class="form-grid" style="display: grid; gap: 1rem; max-width: 400px;">
+                    <div class="form-group">
+                        <label for="heartbeatTimeout">Heartbeat Timeout (seconds)</label>
+                        <input type="number" id="heartbeatTimeout" min="5" max="300" value="30" placeholder="30"
+                            class="form-input">
+                        <small style="opacity: 0.6;">Agent marked as "Degraded" after this many seconds without
+                            heartbeat</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="offlineTimeout">Offline Timeout (seconds)</label>
+                        <input type="number" id="offlineTimeout" min="10" max="600" value="90" placeholder="90"
+                            class="form-input">
+                        <small style="opacity: 0.6;">Agent marked as "Offline" after this many seconds without
+                            heartbeat</small>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn-primary">Save Settings</button>
+                        <span id="settingsSaved" style="margin-left: 1rem; color: #10b981; display: none;">✓
+                            Saved</span>
+                    </div>
+                </form>
+
+                <hr style="margin: 2rem 0; opacity: 0.2;">
+
+                <h3>Current Server Info</h3>
+                <div id="serverInfo" style="font-family: monospace; margin-top: 1rem;">
+                    <p>Loading...</p>
                 </div>
             </section>
         </div>

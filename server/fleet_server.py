@@ -98,8 +98,8 @@ class FleetServer:
         listen_address: str = "0.0.0.0:9999",
         service_name: str = "pyfleet",
         workers: int = 10,
-        heartbeat_timeout: float = 60.0,
-        offline_timeout: float = 300.0,
+        heartbeat_timeout: float = 30.0,  # Degraded after 30s
+        offline_timeout: float = 90.0,    # Offline after 90s
     ):
         self.listen_address = listen_address
         self.service_name = service_name
@@ -171,7 +171,7 @@ class FleetServer:
         logger.info("Server stopped")
     
     def _monitor(self) -> None:
-        while not self._stop.wait(timeout=30):
+        while not self._stop.wait(timeout=10):  # Check every 10s
             try:
                 self.clients.check_timeouts()
             except Exception:
